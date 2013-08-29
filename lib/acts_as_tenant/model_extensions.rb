@@ -18,12 +18,12 @@ module ActsAsTenant
     self.current_tenant = old_tenant
     return value
   end
-  
+
   module ModelExtensions
     def self.included(base)
       base.extend(ClassMethods)
     end
-  
+
     module ClassMethods
       attr_accessor :tenant_association
 
@@ -49,7 +49,7 @@ module ActsAsTenant
             m.send "#{self.class.tenant_association.foreign_key}=".to_sym, ActsAsTenant.current_tenant.send(self.class.tenant_association.association_primary_key)
           end
         }, :on => :create
-    
+
         reflect_on_all_associations.each do |a|
           unless a == tenant_association || a.macro != :belongs_to || a.options[:polymorphic]
             validates_each a.foreign_key.to_sym do |record, attr, value|
@@ -57,7 +57,7 @@ module ActsAsTenant
             end
           end
         end
-        
+
         # Dynamically generate the following methods:
         # - Rewrite the accessors to make tenant immutable
         # - Add a helper method to verify if a model has been scoped by AaT
@@ -69,14 +69,14 @@ module ActsAsTenant
 
         define_method "#{tenant_association.name}=" do |model|
           raise ActsAsTenant::Errors::TenantIsImmutable unless new_record?
-          super(model) 
+          super(model)
         end
-        
+
         def scoped_by_tenant?
           true
         end
       end
-      
+
       def validates_uniqueness_to_tenant(fields, args ={})
         raise ActsAsTenant::Errors::ModelNotScopedByTenant unless respond_to?(:scoped_by_tenant?)
         tenant_id = lambda { "#{tenant_association.foreign_key}"}.call
@@ -85,7 +85,7 @@ module ActsAsTenant
         else
           args[:scope] = tenant_id
         end
-        
+
         validates_uniqueness_of(fields, args)
       end
     end

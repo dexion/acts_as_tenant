@@ -309,7 +309,7 @@ describe ActsAsTenant do
         @project1 = @account1.projects.create!(:name => 'foobar')
         ActsAsTenant.configuration.stub(require_tenant: true)
       end
-      
+
       it "should raise an error when no tenant is provided" do
         expect { Project.all.load }.to raise_error(ActsAsTenant::Errors::NoTenantSet)
       end
