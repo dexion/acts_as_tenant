@@ -26,6 +26,7 @@ ActiveRecord::Schema.define(:version => 1) do
 
   create_table :countries, :force => true do |t|
     t.column :name, :string
+    t.column :account_id, :integer
   end
 
   create_table :cities, :force => true do |t|
@@ -64,6 +65,11 @@ class Task < ActiveRecord::Base
   default_scope -> { where(:completed => nil).order("name") }
 
   acts_as_tenant :account
+  validates_uniqueness_of :name
+end
+
+class Country < ActiveRecord::Base
+  belongs_to :account
   validates_uniqueness_of :name
 end
 
@@ -292,6 +298,13 @@ describe ActsAsTenant do
       it "should not raise an error when no tenant is provided" do
         expect { Project.all }.to_not raise_error
       end
+    end
+  end
+
+  describe 'Associations with tenant already defined' do
+    it 'should not create belongs to association' do
+      expect(Country).to_not receive(:belongs_to)
+      Country.acts_as_tenant :account
     end
   end
 end

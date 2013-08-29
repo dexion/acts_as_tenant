@@ -39,10 +39,10 @@ module ActsAsTenant
     end
   
     module ClassMethods
-      def acts_as_tenant(association = :account)
-        belongs_to association
-        ActsAsTenant.set_tenant_klass(association)
-        
+      def acts_as_tenant(association_name = :account)
+        association = reflect_on_association(association_name) || belongs_to(association_name)
+        ActsAsTenant.set_tenant_klass(association_name)
+
         default_scope lambda {
           if ActsAsTenant.configuration.require_tenant && ActsAsTenant.current_tenant.nil?
             raise ActsAsTenant::Errors::NoTenantSet
@@ -56,12 +56,12 @@ module ActsAsTenant
         #
         before_validation Proc.new {|m|
           if ActsAsTenant.current_tenant
-            m.send "#{association}_id=".to_sym, ActsAsTenant.current_tenant.id
+            m.send "#{association_name}_id=".to_sym, ActsAsTenant.current_tenant.id
           end
         }, :on => :create
     
         reflect_on_all_associations.each do |a|
-          unless a == reflect_on_association(association) || a.macro != :belongs_to || a.options[:polymorphic] 
+          unless a == reflect_on_association(association_name) || a.macro != :belongs_to || a.options[:polymorphic]
             association_class =  a.options[:class_name].nil? ? a.name.to_s.classify.constantize : a.options[:class_name].constantize
             validates_each a.foreign_key.to_sym do |record, attr, value|
               record.errors.add attr, "association is invalid [ActsAsTenant]" unless value.nil? || association_class.where(:id => value).present?
