@@ -1,18 +1,4 @@
 module ActsAsTenant
-  @@tenant_klass = nil
-  
-  def self.set_tenant_klass(klass)
-    @@tenant_klass = klass
-  end
-  
-  def self.tenant_klass
-    @@tenant_klass
-  end
-  
-  def self.fkey
-    "#{@@tenant_klass.to_s}_id"
-  end
-  
   def self.current_tenant=(tenant)
     RequestStore.store[:current_tenant] = tenant
   end
@@ -39,15 +25,16 @@ module ActsAsTenant
     end
   
     module ClassMethods
+      attr_accessor :tenant_association
+
       def acts_as_tenant(association_name = :account)
-        association = reflect_on_association(association_name) || belongs_to(association_name)
-        ActsAsTenant.set_tenant_klass(association_name)
+        self.tenant_association = reflect_on_association(association_name) || belongs_to(association_name)
 
         default_scope lambda {
           if ActsAsTenant.configuration.require_tenant && ActsAsTenant.current_tenant.nil?
             raise ActsAsTenant::Errors::NoTenantSet
           end
-          where({ActsAsTenant.fkey => ActsAsTenant.current_tenant.id}) if ActsAsTenant.current_tenant
+          where({tenant_association.foreign_key => ActsAsTenant.current_tenant.id}) if ActsAsTenant.current_tenant
         }
 
         # Add the following validations to the receiving model:
@@ -56,12 +43,12 @@ module ActsAsTenant
         #
         before_validation Proc.new {|m|
           if ActsAsTenant.current_tenant
-            m.send "#{association_name}_id=".to_sym, ActsAsTenant.current_tenant.id
+            m.send "#{self.class.tenant_association.name}_id=".to_sym, ActsAsTenant.current_tenant.id
           end
         }, :on => :create
     
         reflect_on_all_associations.each do |a|
-          unless a == reflect_on_association(association_name) || a.macro != :belongs_to || a.options[:polymorphic]
+          unless a == tenant_association || a.macro != :belongs_to || a.options[:polymorphic]
             association_class =  a.options[:class_name].nil? ? a.name.to_s.classify.constantize : a.options[:class_name].constantize
             validates_each a.foreign_key.to_sym do |record, attr, value|
               record.errors.add attr, "association is invalid [ActsAsTenant]" unless value.nil? || association_class.where(:id => value).present?
@@ -73,12 +60,12 @@ module ActsAsTenant
         # - Rewrite the accessors to make tenant immutable
         # - Add a helper method to verify if a model has been scoped by AaT
         #
-        define_method "#{ActsAsTenant.fkey}=" do |integer|
+        define_method "#{tenant_association.foreign_key}=" do |value|
           raise ActsAsTenant::Errors::TenantIsImmutable unless new_record?
-          write_attribute("#{ActsAsTenant.fkey}", integer)  
+          write_attribute("#{self.class.tenant_association.foreign_key}", value)
         end
 
-        define_method "#{ActsAsTenant.tenant_klass.to_s}=" do |model|  
+        define_method "#{tenant_association.name}=" do |model|
           raise ActsAsTenant::Errors::TenantIsImmutable unless new_record?
           super(model) 
         end
@@ -90,7 +77,7 @@ module ActsAsTenant
       
       def validates_uniqueness_to_tenant(fields, args ={})
         raise ActsAsTenant::Errors::ModelNotScopedByTenant unless respond_to?(:scoped_by_tenant?)
-        tenant_id = lambda { "#{ActsAsTenant.fkey}"}.call
+        tenant_id = lambda { "#{tenant_association.foreign_key}"}.call
         if args[:scope]
           args[:scope] = Array(args[:scope]) << tenant_id
         else
