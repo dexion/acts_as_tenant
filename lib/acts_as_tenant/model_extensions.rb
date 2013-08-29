@@ -34,7 +34,10 @@ module ActsAsTenant
           if ActsAsTenant.configuration.require_tenant && ActsAsTenant.current_tenant.nil?
             raise ActsAsTenant::Errors::NoTenantSet
           end
-          where({tenant_association.foreign_key => ActsAsTenant.current_tenant.id}) if ActsAsTenant.current_tenant
+
+          if ActsAsTenant.current_tenant
+            where({tenant_association.foreign_key => ActsAsTenant.current_tenant.send(tenant_association.association_primary_key)})
+          end
         }
 
         # Add the following validations to the receiving model:
@@ -43,7 +46,7 @@ module ActsAsTenant
         #
         before_validation Proc.new {|m|
           if ActsAsTenant.current_tenant
-            m.send "#{self.class.tenant_association.name}_id=".to_sym, ActsAsTenant.current_tenant.id
+            m.send "#{self.class.tenant_association.foreign_key}=".to_sym, ActsAsTenant.current_tenant.send(self.class.tenant_association.association_primary_key)
           end
         }, :on => :create
     

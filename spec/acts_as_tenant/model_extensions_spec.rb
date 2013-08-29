@@ -40,11 +40,22 @@ ActiveRecord::Schema.define(:version => 1) do
     t.column :account_id, :integer
   end
 
+  create_table :departments, :force => true do |t|
+    t.column :name, :string
+    t.column :account_name, :string
+  end
+
+  create_table :teams, :force => true do |t|
+    t.column :name, :string
+    t.column :account_id, :integer
+    t.column :department_id, :integer
+  end
 end
 
 # Setup the models
 class Account < ActiveRecord::Base
   has_many :projects
+  has_many :departments, foreign_key: :account_name, primary_key: :name
 end
 
 class Project < ActiveRecord::Base
@@ -81,6 +92,21 @@ class SubTask < ActiveRecord::Base
   acts_as_tenant :account
   belongs_to :something_else, :class_name => "Project"
   validates_uniqueness_to_tenant :name, scope: :attribute2
+end
+
+class Department < ActiveRecord::Base
+  belongs_to :account, primary_key: :name, foreign_key: :account_name
+  has_many :teams
+  acts_as_tenant :account
+
+  validates_uniqueness_of :name
+end
+
+class Team < ActiveRecord::Base
+  belongs_to :department
+
+  acts_as_tenant :account
+  validates_uniqueness_of :name
 end
 
 # Start testing!
@@ -305,6 +331,26 @@ describe ActsAsTenant do
     it 'should not create belongs to association' do
       expect(Country).to_not receive(:belongs_to)
       Country.acts_as_tenant :account
+    end
+
+    context 'With foreign_key and primary_key' do
+      before do
+        @account = Account.create!(:name => 'foo')
+        @department = @account.departments.create!(:name => 'foobar', :account_name => @account.name )
+        @team1 = Team.create!(:name => 'no_tenant', :department => @department)
+
+        ActsAsTenant.current_tenant = @account
+        @team2 = @department.teams.create!(:name => 'baz')
+        @teams = @department.teams
+      end
+
+      it 'should correctly set the tenant on the team created with current_tenant set' do
+        @team2.account.should == @account
+      end
+
+      it 'should filter out the non-tenant team from the department' do
+        @teams.length.should == 1
+      end
     end
   end
 end
