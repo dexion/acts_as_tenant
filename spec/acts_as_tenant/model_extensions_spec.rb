@@ -47,7 +47,6 @@ ActiveRecord::Schema.define(:version => 1) do
 
   create_table :teams, :force => true do |t|
     t.column :name, :string
-    t.column :account_id, :integer
     t.column :department_id, :integer
   end
 end
@@ -104,6 +103,7 @@ end
 
 class Team < ActiveRecord::Base
   belongs_to :department
+  has_one :account, through: :department
 
   acts_as_tenant :account
   validates_uniqueness_of :name
@@ -339,7 +339,7 @@ describe ActsAsTenant do
       before do
         @account = Account.create!(:name => 'foo')
         @department = @account.departments.create!(:name => 'foobar', :account_name => @account.name )
-        @team1 = Team.create!(:name => 'no_tenant', :department => @department)
+        @team1 = Team.create!(:name => 'no_tenant')
 
         ActsAsTenant.current_tenant = @account
         @team2 = @department.teams.create!(:name => 'baz')

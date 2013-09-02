@@ -36,7 +36,11 @@ module ActsAsTenant
           end
 
           if ActsAsTenant.current_tenant
-            where({tenant_association.foreign_key => ActsAsTenant.current_tenant.send(tenant_association.association_primary_key)})
+            if self.tenant_association.options[:through]
+              joins(tenant_association.name).where(%Q{"#{tenant_association.table_name}"."#{tenant_association.primary_key_column.name}" = ?}, ActsAsTenant.current_tenant.id)
+            else
+              where({tenant_association.foreign_key => ActsAsTenant.current_tenant.send(tenant_association.association_primary_key)})
+            end
           end
         }
 
@@ -45,7 +49,7 @@ module ActsAsTenant
         # - validate that associations belong to the tenant, currently only for belongs_to
         #
         before_validation Proc.new {|m|
-          if ActsAsTenant.current_tenant
+          if ActsAsTenant.current_tenant && !self.class.tenant_association.options[:through]
             m.send "#{self.class.tenant_association.foreign_key}=".to_sym, ActsAsTenant.current_tenant.send(self.class.tenant_association.association_primary_key)
           end
         }, :on => :create
