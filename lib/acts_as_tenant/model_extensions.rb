@@ -37,7 +37,9 @@ module ActsAsTenant
 
           if ActsAsTenant.current_tenant
             if self.tenant_association.options[:through]
-              joins(tenant_association.name).where(%Q{"#{tenant_association.table_name}"."#{tenant_association.primary_key_column.name}" = ?}, ActsAsTenant.current_tenant.id)
+              table = tenant_association.quoted_table_name
+              column = ActiveRecord::Base.connection.quote_column_name(tenant_association.primary_key_column.name)
+              joins(tenant_association.name).where("#{table}.#{column} = ?", ActsAsTenant.current_tenant.id)
             else
               where({tenant_association.foreign_key => ActsAsTenant.current_tenant.send(tenant_association.association_primary_key)})
             end
