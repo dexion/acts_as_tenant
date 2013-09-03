@@ -94,7 +94,7 @@ class SubTask < ActiveRecord::Base
 end
 
 class Department < ActiveRecord::Base
-  belongs_to :account, primary_key: :name, foreign_key: :account_name
+  belongs_to :account, :primary_key => :name, :foreign_key => :account_name
   has_many :teams
   acts_as_tenant :account
 
