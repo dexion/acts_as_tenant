@@ -59,7 +59,7 @@ module ActsAsTenant
         reflect_on_all_associations.each do |a|
           unless a == tenant_association || a.macro != :belongs_to || a.options[:polymorphic]
             validates_each a.foreign_key.to_sym do |record, attr, value|
-              record.errors.add attr, "association is invalid [ActsAsTenant]" unless value.nil? || a.klass.where(:id => value).present?
+              record.errors.add attr, "association is invalid [ActsAsTenant]" unless value.nil? || a.klass.where(a.primary_key_column.name => value).present?
             end
           end
         end

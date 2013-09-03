@@ -40,7 +40,7 @@ ActiveRecord::Schema.define(:version => 1) do
     t.column :account_id, :integer
   end
 
-  create_table :departments, :force => true do |t|
+  create_table :departments, :primary_key => :the_id, :force => true do |t|
     t.column :name, :string
     t.column :account_name, :string
   end
@@ -94,6 +94,7 @@ class SubTask < ActiveRecord::Base
 end
 
 class Department < ActiveRecord::Base
+  self.primary_key = :the_id
   belongs_to :account, :primary_key => :name, :foreign_key => :account_name
   has_many :teams
   acts_as_tenant :account
