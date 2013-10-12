@@ -41,7 +41,7 @@ module ActsAsTenant
               column = ActiveRecord::Base.connection.quote_column_name(tenant_association.primary_key_column.name)
               joins(tenant_association.name).where("#{table}.#{column} = ?", ActsAsTenant.current_tenant.id)
             else
-              where({tenant_association.foreign_key => ActsAsTenant.current_tenant.send(tenant_association.association_primary_key)})
+              where("#{self.table_name}.#{tenant_association.foreign_key} = ?", ActsAsTenant.current_tenant.id)
             end
           end
         }
