@@ -1,4 +1,7 @@
 module ActsAsTenant
+
+  class TenantNotExist < StandardError; end
+
   module ControllerExtensions
 
     # this method allows setting the current_tenant by reading the subdomain and looking
@@ -19,6 +22,7 @@ module ActsAsTenant
         private
           def find_tenant_by_subdomain
             ActsAsTenant.current_tenant = tenant_class.where(tenant_column => request.subdomains.last).first
+            raise TenantNotExist if ActsAsTenant.current_tenant.blank?
           end
 
           def current_tenant
